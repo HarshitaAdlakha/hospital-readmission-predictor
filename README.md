@@ -5,7 +5,7 @@
 [![CI](https://github.com/HarshitaAdlakha/hospital-readmission-predictor/actions/workflows/ci.yml/badge.svg)](https://github.com/HarshitaAdlakha/hospital-readmission-predictor/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3%2B-orange.svg)](https://scikit-learn.org/)
-[![Streamlit App](https://img.shields.io/badge/demo-streamlit-red.svg)](https://hospital-readmission-predictor.streamlit.app)
+[![Streamlit App](https://img.shields.io/badge/demo-streamlit-red.svg)](https://hospital-readmission-predictor-cjct2cs9agjxjwfl9nblqc.streamlit.app/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -25,10 +25,10 @@ This project builds two ML models trained on **10 years of inpatient data from 1
 
 ## Live Demo
 
-> **Try the interactive Streamlit app:**
-> ```
-> streamlit run app/app.py
-> ```
+> **Try the live interactive demo:**
+> 🔗 [https://hospital-readmission-predictor-cjct2cs9agjxjwfl9nblqc.streamlit.app/](https://hospital-readmission-predictor-cjct2cs9agjxjwfl9nblqc.streamlit.app/)
+>
+> Or run locally: `streamlit run app/app.py`
 > Adjust patient parameters in the sidebar and get real-time readmission risk predictions.
 
 ---

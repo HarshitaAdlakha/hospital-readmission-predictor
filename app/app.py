@@ -245,6 +245,7 @@ with st.expander("ℹ️ About This Project"):
         **Key engineered features:** recurrency, medication_change_ratio, lab_tests_per_med,
         patient_severity, age_times_medications
 
+        **Live Demo:** [Streamlit App](https://hospital-readmission-predictor-cjct2cs9agjxjwfl9nblqc.streamlit.app/)
         **Source code:** [GitHub](https://github.com/HarshitaAdlakha/hospital-readmission-predictor)
         """
     )
