@@ -25,8 +25,8 @@ ENV/
 data/train.csv
 data/test.csv
 
-# Trained model artifacts (regenerated via train.py)
-models/*.pkl
+# Trained model artifacts — committed so Streamlit Cloud can load them
+# models/*.pkl
 
 # IDE
 .vscode/
