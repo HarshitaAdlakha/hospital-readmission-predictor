@@ -141,7 +141,6 @@ class DataPreprocessor(BaseEstimator, TransformerMixin):
 
     def _initial_clean(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
-        target_cols = [c for c in ("readmitted", "readmitted_binary") if c in df.columns]
         drop = [c for c in DROP_COLS if c in df.columns]
         df = df.drop(columns=drop, errors="ignore")
 

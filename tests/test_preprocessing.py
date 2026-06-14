@@ -2,7 +2,6 @@
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from src.preprocessing import DataPreprocessor, _map_diag
 
