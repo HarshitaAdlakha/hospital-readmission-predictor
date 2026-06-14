@@ -25,19 +25,58 @@ from src.models import BinaryClassifier, MulticlassClassifier
 MODELS_DIR = "models"
 os.makedirs(MODELS_DIR, exist_ok=True)
 
+# Map actual CSV column names → names expected by preprocessing code
+COLUMN_RENAME = {
+    "patient_id": "patient_nbr",
+    "outpatient_visits_in_previous_year": "number_outpatient",
+    "emergency_visits_in_previous_year": "number_emergency",
+    "inpatient_visits_in_previous_year": "number_inpatient",
+    "admission_type": "admission_type_id",
+    "discharge_disposition": "discharge_disposition_id",
+    "admission_source": "admission_source_id",
+    "length_of_stay_in_hospital": "time_in_hospital",
+    "number_lab_tests": "num_lab_procedures",
+    "non_lab_procedures": "num_procedures",
+    "number_of_medications": "num_medications",
+    "primary_diagnosis": "diag_1",
+    "secondary_diagnosis": "diag_2",
+    "additional_diagnosis": "diag_3",
+    "glucose_test_result": "max_glu_serum",
+    "a1c_test_result": "A1Cresult",
+    "change_in_meds_during_hospitalization": "change",
+    "prescribed_diabetes_meds": "diabetesMed",
+    "medication": "insulin",
+    "readmitted_multiclass": "readmitted",
+}
+
 
 def load_data(train_path: str, test_path: str):
-    train_df = pd.read_csv(train_path)
-    test_df = pd.read_csv(test_path)
+    train_df = pd.read_csv(train_path).rename(columns=COLUMN_RENAME)
+    test_df = pd.read_csv(test_path).rename(columns=COLUMN_RENAME)
     print(f"Train shape: {train_df.shape}  |  Test shape: {test_df.shape}")
     return train_df, test_df
 
 
 def split_features_targets(df: pd.DataFrame):
-    binary_target = "readmitted_binary" if "readmitted_binary" in df.columns else None
+    df = df.copy()
+
+    # handle multiclass target
     multi_target = "readmitted" if "readmitted" in df.columns else None
 
-    y_bin = df[binary_target] if binary_target else None
+    # handle binary target — derive from multiclass if missing
+    if "readmitted_binary" not in df.columns and multi_target:
+        df["readmitted_binary"] = (df["readmitted"] == "<30").astype(int)
+
+    binary_target = "readmitted_binary" if "readmitted_binary" in df.columns else None
+
+    if binary_target:
+        # normalise to int: Yes/1/<30 → 1, everything else → 0
+        y_bin = df[binary_target].map(
+            lambda x: 1 if str(x).strip().lower() in ("yes", "<30", "1") else 0
+        )
+    else:
+        y_bin = None
+
     y_mul = df[multi_target] if multi_target else None
 
     drop_targets = [c for c in (binary_target, multi_target) if c is not None]
@@ -53,17 +92,23 @@ def train_pipeline(train_path: str, test_path: str):
     train_df, test_df = load_data(train_path, test_path)
 
     # ----------------------------------------------------------------
-    # 1. Preprocessing
+    # 1. Preprocessing — fit on train only, split for validation
     # ----------------------------------------------------------------
     print("\n[1/5] Fitting preprocessor on training data...")
-    X_train_raw, y_bin_train, y_mul_train = split_features_targets(train_df)
-    X_test_raw, y_bin_test, y_mul_test = split_features_targets(test_df)
+    X_raw, y_bin_all, y_mul_all = split_features_targets(train_df)
+
+    # use 80/20 split from train for evaluation (test.csv has no labels)
+    from sklearn.model_selection import train_test_split
+    X_tr, X_val, y_bin_tr, y_bin_val, y_mul_tr, y_mul_val = train_test_split(
+        X_raw, y_bin_all, y_mul_all, test_size=0.2, random_state=42,
+        stratify=y_bin_all if y_bin_all is not None else None
+    )
 
     preprocessor = DataPreprocessor(missing_threshold=0.5)
-    preprocessor.fit(X_train_raw)
+    preprocessor.fit(X_tr)
 
-    X_train_proc = preprocessor.transform(X_train_raw)
-    X_test_proc = preprocessor.transform(X_test_raw)
+    X_train_proc = preprocessor.transform(X_tr)
+    X_val_proc = preprocessor.transform(X_val)
     print(f"   After preprocessing: {X_train_proc.shape[1]} features")
 
     # ----------------------------------------------------------------
@@ -74,20 +119,21 @@ def train_pipeline(train_path: str, test_path: str):
     engineer.fit(X_train_proc)
 
     X_train = engineer.transform(X_train_proc)
-    X_test = engineer.transform(X_test_proc)
+    X_val_eng = engineer.transform(X_val_proc)
+    X_val_eng = X_val_eng.reindex(columns=X_train.columns, fill_value=0)
     print(f"   After engineering: {X_train.shape[1]} features")
 
     # ----------------------------------------------------------------
     # 3. Binary classification
     # ----------------------------------------------------------------
-    if y_bin_train is not None:
+    if y_bin_tr is not None:
         print("\n[3/5] Training Binary Classifier (Stacking: MLP + ExtraTrees)...")
         binary_clf = BinaryClassifier(n_features=14, random_state=42)
-        binary_clf.fit(X_train, y_bin_train)
+        binary_clf.fit(X_train, y_bin_tr)
 
-        preds_bin = binary_clf.predict(X_test)
-        f1_bin = f1_score(y_bin_test, preds_bin, average="binary", zero_division=0)
-        print(f"   Binary F1 on test set: {f1_bin:.4f}")
+        preds_bin = binary_clf.predict(X_val_eng)
+        f1_bin = f1_score(y_bin_val, preds_bin, average="binary", zero_division=0)
+        print(f"   Binary F1 on validation set: {f1_bin:.4f}")
 
         joblib.dump(binary_clf, os.path.join(MODELS_DIR, "binary_pipeline.pkl"))
         print(f"   Saved → {MODELS_DIR}/binary_pipeline.pkl")
@@ -97,14 +143,14 @@ def train_pipeline(train_path: str, test_path: str):
     # ----------------------------------------------------------------
     # 4. Multiclass classification
     # ----------------------------------------------------------------
-    if y_mul_train is not None:
+    if y_mul_tr is not None:
         print("\n[4/5] Training Multiclass Classifier (AdaBoost)...")
         multi_clf = MulticlassClassifier(n_features=19, n_estimators=100, random_state=42)
-        multi_clf.fit(X_train, y_mul_train)
+        multi_clf.fit(X_train, y_mul_tr)
 
-        preds_mul = multi_clf.predict(X_test)
-        f1_mul = f1_score(y_mul_test, preds_mul, average="macro", zero_division=0)
-        print(f"   Multiclass F1 (macro) on test set: {f1_mul:.4f}")
+        preds_mul = multi_clf.predict(X_val_eng)
+        f1_mul = f1_score(y_mul_val, preds_mul, average="macro", zero_division=0)
+        print(f"   Multiclass F1 (macro) on validation set: {f1_mul:.4f}")
 
         joblib.dump(multi_clf, os.path.join(MODELS_DIR, "multiclass_pipeline.pkl"))
         print(f"   Saved → {MODELS_DIR}/multiclass_pipeline.pkl")

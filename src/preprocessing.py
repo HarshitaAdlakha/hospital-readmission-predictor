@@ -21,7 +21,7 @@ NON_METRIC_FEATURES = [
     "max_glu_serum", "A1Cresult", "change", "diabetesMed",
 ]
 
-DROP_COLS = ["encounter_id", "patient_nbr", "weight", "payer_code"]
+DROP_COLS = ["encounter_id", "patient_nbr", "patient_id", "weight", "payer_code", "country"]
 
 AGE_MAP = {
     "[0-10)": 5, "[10-20)": 15, "[20-30)": 25, "[30-40)": 35,

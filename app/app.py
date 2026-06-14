@@ -94,6 +94,7 @@ input_dict = {
     "A1Cresult": A1Cresult,
     "change": change,
     # defaults for columns expected by preprocessor
+    "average_pulse_bpm": 80,
     "admission_type_id": 1,
     "discharge_disposition_id": 1,
     "admission_source_id": 7,
