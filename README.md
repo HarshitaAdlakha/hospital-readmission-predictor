@@ -270,4 +270,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-*Built by **Harshita Adlakha** | Amazon ML Summer Program 2024*
+*Built by **Harshita Adlakha** | 
